@@ -1,5 +1,5 @@
 ## LANIT: Language-Driven Image-to-Image Translation for Unlabeled Data
-Check out project [[Project Page](https://KU-CVLAB.github.io/LANIT/)] and the paper on [[arXiv](https://arxiv.org/list/cs.CV/recent)].
+Check out project [[Project Page](https://KU-CVLAB.github.io/LANIT/)] and the paper on [[arXiv](https://arxiv.org/abs/2208.14889)].
 We will update codes and pretrained weights will be ready before the conference. 
 
 <!--ECCV'22 camera ready version can be found here : [[arXiv](https://arxiv.org/abs/2207.10866)].-->
