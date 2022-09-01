@@ -38,9 +38,6 @@ Inference code:
       to be realised soon... #python test.py 
 
 
-# Acknowledgement <a name="Acknowledgement"></a>
-.
-
 ### BibTeX
 If you find this research useful, please consider citing:
 ````BibTeX
