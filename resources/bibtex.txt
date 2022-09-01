@@ -1,6 +1,7 @@
-@inproceedings{author20XXtitle,
-  title={Please cite me},
-  author={Author, First and Author, Second and Author, Third},
-  booktitle={Conference},
-  year={20XX}
+@article{park2022lanit,
+  doi = {10.48550/ARXIV.2208.14889},
+  title = {LANIT: Language-Driven Image-to-Image Translation for Unlabeled Data},
+  author = {Park, Jihye and Kim, Soohyun and Kim, Sunwoo and Yoo, Jaejun and Uh, Youngjung and Kim, Seungryong},
+  publisher = {arXiv preprint arXiv:2208.14889},
+  year = {2022},
 }
