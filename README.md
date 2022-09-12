@@ -60,6 +60,7 @@ Then, call --train_img_dir='./datasets/CelebA-HQ/train' or './datasets/ffhq' etc
 
 # Training
 
+## Setting 
 Training code(example of CelebA-HQ):
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py\
