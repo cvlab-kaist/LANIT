@@ -94,6 +94,9 @@ For example, in the case of animalfaces, the code is written as below:
 * prompt: the list that include class prompts defined by users.
 
 ## Training code(example of CelebA-HQ):
+
+The example shell script is located in "./shell"
+
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py\
 --name celeb-10\
@@ -111,6 +114,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --topk 3\
 --use_base\
 --zero_cut\
+--w_hpf 0\
 ```
 
 * In step1(don't do prompt learning): num_domain=10, topk=3, use_all_losses(cycle,dc,ds), use_phi_domain(use_base, zero_cut)
@@ -123,6 +127,8 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
  
 # Inference
 Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
+
+The example shell script is located in "./shell"
 
 * Reference-guided inference code(CelebA-HQ):
 ```
@@ -152,7 +158,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --mode sample\
 --val_batch_size 8\
 --infer_mode latent\
---latent_num 0 1 2\
+--latent_num 0 1 2\ # latent_num is the list that includes the attributes you want to translate.
 --src_dir ./dataset/CelebA-HQ/train\
 --ref_dir ./dataset/CelebA-HQ/test\
 --checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/]\ 
