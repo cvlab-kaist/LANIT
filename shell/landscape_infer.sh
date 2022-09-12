@@ -1,0 +1,16 @@
+CUDA_VISIBLE_DEVICES=0 python main.py\
+    --name landscape\
+    --dataset landscape\
+    --mode sample\
+    --infer_mode reference\
+    --latent_num 0 1 2\
+    --src_dir ./datasets/lhq_256_src\
+    --ref_dir ./datasets/lhq_256_src\
+    --checkpoint_dir ./checkpoints/landscape/\
+    --resume_iter 98000\
+    --step1\
+    --num_domains 10\
+    --multi_hot\
+    --topk 3\
+    --use_base\
+    --zero_cut\
