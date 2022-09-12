@@ -19,10 +19,9 @@ Our model LANIT is illustrated below:
 # Environment Settings
 ```
 git clone https://github.com/KU-CVLAB/LANIT
-
 cd LANIT
-
 conda env create -f environment.yaml
+conda activate lanit
 ```
 # Preparing datasets
 * Download : [CelebA-HQ (PGGAN)](https://github.com/tkarras/progressive_growing_of_gans) / [FFHQ (StyleGAN)](https://github.com/NVlabs/ffhq-dataset) / [AnimalFaces (FUNIT)](https://github.com/NVlabs/FUNIT) / [Food](https://www.kaggle.com/datasets/dansbecker/food-101) / [Lsun-Car](https://github.com/Tin-Kramberger/LSUN-Stanford-dataset) / [Lsun-Church](https://www.yf.io/p/lsun) / [LHQ (ALIS)](https://github.com/universome/alis) / [MetFace](https://github.com/NVlabs/metfaces-dataset) / [Anime](https://github.com/bchao1/Anime-Face-Dataset)
