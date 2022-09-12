@@ -24,12 +24,49 @@ cd LANIT
 
 conda env create -f environment.yaml
 ```
+# Preparing datasets
+* Download : [CelebA-HQ (PGGAN)](https://github.com/tkarras/progressive_growing_of_gans) / [FFHQ (StyleGAN)](https://github.com/NVlabs/ffhq-dataset) / [AnimalFaces (FUNIT)](https://github.com/NVlabs/FUNIT) / [Food](https://www.kaggle.com/datasets/dansbecker/food-101) / [Lsun-Car](https://github.com/Tin-Kramberger/LSUN-Stanford-dataset) / [Lsun-Church](https://www.yf.io/p/lsun) / [LHQ (ALIS)](https://github.com/universome/alis) / [MetFace](https://github.com/NVlabs/metfaces-dataset) / [Anime](https://github.com/bchao1/Anime-Face-Dataset)
+* Example directory hierarchy (CelebA-HQ, AnimalFaces, and other datasets): 
+```
+Project
+|--- LANIT
+|          |--- main.py
+|          |--- core    
+|                 |--- solver.py
+|                 |--- data_loader.py
+|          |--- shell
+|
+|          |--- datasets
+|                 |--- CelebA-HQ
+|                         |--- train
+|                             |--- images
+|                                   |--- 000001.jpg
+|                                   |--- ...
+|                         |--- test
+|                             |--- images
+|                                   |--- 000001.jpg
+|                                   |--- ...
+|                 |--- animal_faces
+|                         |--- n02085620
+|                         |--- n02085782
+|                         |--- ...
+|                 |--- ffhq, lsun-car, lsun-church, LHQ, metface, anime
+|                         |--- images
+|                                |--- 000001.jpg
+|                                |--- ...
+
+Then, call --train_img_dir='./datasets/CelebA-HQ/train' or './datasets/ffhq' etc.
+```
 
 # Training
 
 Training code:
 
+Top-1
+
       to be realised soon... #python train.py 
+
+Top-3
 
 # Inference
 
