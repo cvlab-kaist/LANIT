@@ -60,8 +60,40 @@ Then, call --train_img_dir='./datasets/CelebA-HQ/train' or './datasets/ffhq' etc
 
 # Training
 
-## Setting 
-Training code(example of CelebA-HQ):
+## Set prompts and domains to utilize.
+Please refer to **a function get_rpompt-and_att in ./core/utils.py**
+
+If you want to use other datasets, you shold set prompt and domain to utilize.
+
+For example, in the case of animalfaces, the code is written as below:
+```
+    if 'animal' in args.dataset:
+        init_prompt = 'a photo of the {}.'
+        base_template = ["a photo of the animal face."]
+        all_prompt = ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois', 'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger']
+             
+        if args.num_domains == 4:
+            prompt = ['beagle', 'golden retriever','tabby cat', 'bengal tiger']
+        elif args.num_domains == 7:
+            prompt = ['beagle', 'dandie dinmont terrier', 'golden retriever', 'white fox', 'tabby cat', 'snow leopard', 'bengal tiger']
+        elif args.num_domains == 10:
+            prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
+                       'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger']
+        elif args.num_domains == 13:
+            prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
+                       'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger',\
+                       'french bulldog', 'mink', 'maned wolf']
+        elif args.num_domains == 16:
+            prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
+                       'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger',\
+                       'french bulldog', 'mink', 'maned wolf', 'monkey', 'toy poodle', 'angora rabbit']
+```
+
+* init_prompt: prompt format to be shared by class prompts  defined by users.
+* base_template: prompt that includes all the class prompts defined by users.
+* prompt: the list that include class prompts defined by users.
+
+## Training code(example of CelebA-HQ):
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py\
 --name celeb-10\
