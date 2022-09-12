@@ -61,13 +61,6 @@ Then, call --train_img_dir='./datasets/CelebA-HQ/train' or './datasets/ffhq' etc
 # Training
 
 Training code(example of CelebA-HQ):
-* (In step1(don't do prompt learning): num_domain=10, topk=3, use_all_losses(cycle,dc,ds), use_phi_domain(use_base, zero_cut))
-* (In step2: change --step1 to --step2, add --use_prompt)
-
-* --num_domain: number of domain that we want to consider
-* --topk: number of multi-attribute that we want to consider in an image. (In this paper, CelebA-HQ=3, AnimalFaces,Food=1)
-* --use_prompt: get PromptLearner from ./core/model/
-
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py\
 --name celeb-10\
@@ -87,6 +80,15 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --zero_cut\
 ```
 
+* In step1(don't do prompt learning): num_domain=10, topk=3, use_all_losses(cycle,dc,ds), use_phi_domain(use_base, zero_cut)
+* In step2: change --step1 to --step2, add --use_prompt
+
+--num_domain: number of domain that we want to consider  
+
+ --topk: number of multi-attribute that we want to consider in an image. (In this paper, CelebA-HQ=3, AnimalFaces,Food=1)  
+
+ --use_prompt: get PromptLearner from ./core/model/  
+ 
 # Inference
 
 Inference code:
