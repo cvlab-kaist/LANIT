@@ -129,6 +129,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --name celeb-10\
 --dataset celeb\
 --mode sample\
+--val_batch_size 8\
 --infer_mode reference\
 --src_dir ./dataset/CelebA-HQ/train\
 --ref_dir ./dataset/CelebA-HQ/test\
@@ -147,8 +148,9 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --name celeb-10\
 --dataset celeb\
 --mode sample\
+--val_batch_size 8\
 --infer_mode latent\
---latent_num [0,1,2]\
+--latent_num 0 1 2\
 --src_dir ./dataset/CelebA-HQ/train\
 --ref_dir ./dataset/CelebA-HQ/test\
 --checkpoint_dir ./checkpoints/lanit_celeb_weight/\
