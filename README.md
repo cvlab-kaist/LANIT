@@ -122,6 +122,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
  ```
  
 # Inference
+Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
 
 * Reference-guided inference code(CelebA-HQ):
 ```
@@ -133,7 +134,8 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --infer_mode reference\
 --src_dir ./dataset/CelebA-HQ/train\
 --ref_dir ./dataset/CelebA-HQ/test\
---checkpoint_dir ./checkpoints/lanit_celeb_weight/\
+--checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/]\ 
+--resume_iter [iteration at which the checkpoint is saved, ex) 98000]
 --step1\
 --num_domains 10\
 --multi_hot\
@@ -153,7 +155,8 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 --latent_num 0 1 2\
 --src_dir ./dataset/CelebA-HQ/train\
 --ref_dir ./dataset/CelebA-HQ/test\
---checkpoint_dir ./checkpoints/lanit_celeb_weight/\
+--checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/]\ 
+--resume_iter [iteration at which the checkpoint is saved, ex) 98000]
 --step1\
 --num_domains 10\
 --multi_hot\
