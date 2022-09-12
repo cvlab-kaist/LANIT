@@ -82,18 +82,49 @@ CUDA_VISIBLE_DEVICES=0 python main.py\
 
 * In step1(don't do prompt learning): num_domain=10, topk=3, use_all_losses(cycle,dc,ds), use_phi_domain(use_base, zero_cut)
 * In step2: change --step1 to --step2, add --use_prompt
-
+```
 --num_domain: number of domain that we want to consider  
-
  --topk: number of multi-attribute that we want to consider in an image. (In this paper, CelebA-HQ=3, AnimalFaces,Food=1)  
-
- --use_prompt: get PromptLearner from ./core/model/  
+ --use_prompt: get PromptLearner from ./core/model/
+ ```
  
 # Inference
 
-Inference code:
+* Reference-guided inference code(CelebA-HQ):
 ```
-      to be realised soon... #python test.py 
+CUDA_VISIBLE_DEVICES=0 python main.py\
+--name celeb-10\
+--dataset celeb\
+--mode sample\
+--infer_mode reference\
+--train_img_dir ./dataset/CelebA-HQ/train\
+--val_img_dir ./dataset/CelebA-HQ/test\
+--checkpoint_dir ./checkpoints/lanit_celeb_weight/\
+--step1\
+--num_domains 10\
+--multi_hot\
+--topk 3\
+--use_base\
+--zero_cut\
+```
+
+* Latent-guided inference code(CelebA-HQ):
+```
+CUDA_VISIBLE_DEVICES=0 python main.py\
+--name celeb-10\
+--dataset celeb\
+--mode sample\
+--infer_mode latent\
+--latent_num [0,1,2]\
+--train_img_dir ./dataset/CelebA-HQ/train\
+--val_img_dir ./dataset/CelebA-HQ/test\
+--checkpoint_dir ./checkpoints/lanit_celeb_weight/\
+--step1\
+--num_domains 10\
+--multi_hot\
+--topk 3\
+--use_base\
+--zero_cut\
 ```
 
 ### BibTeX
