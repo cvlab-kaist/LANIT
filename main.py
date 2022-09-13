@@ -239,7 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('--cal_fid', action='store_true', help='calculate fid when evaluate')
 
 
-    """ prompt learning 할 때 추가. """
+    """ add this arguemnt in step2. """
     # step2
     parser.add_argument('--use_prompt',action='store_true', help='if true, start prompt learning at early and second stage.')
     
