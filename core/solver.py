@@ -41,15 +41,6 @@ class Solver(nn.Module):
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        """
-        self._set_attr_prompt(self.args):
-
-        return
-            self.template: "a photo of the {}." (dataset마다 다름.)
-            self.prompt: 우리가 사용하기로 설정한 prompt들. ex) ["fox", "dog", ... etc]
-            self.prompt_idx: 해당 prompt가 all_prompt의 몇 번째에 존재하는지에대한 index. ex) [2, 1, 0, ...] (데이터셋에서 폴더 순서.)
-            args.num_domains: 우리가 사용하는 prompt의 개수. (=len(prompt))
-        """
         self.template, self.prompt, self.prompt_idx, args.num_domains, self.base_template = self._set_attr_prompt(self.args)
         self.prompt = [self.template.format(x) for x in self.prompt] # template과 결합하여 문장으로 만듬. ex) ["a photo of the fox." , ... , ]
 
@@ -108,10 +99,10 @@ class Solver(nn.Module):
         else:
             self.ckptios = [CheckpointIO(ospj(args.checkpoint_dir, args.name, '{:06d}_nets_ema.ckpt'), data_parallel=True, **self.nets_ema)]
 
-        """ network definition이 모두 끝났으면, device 위치로 network를 올린다. """
+
         self.to(self.device)
 
-        """ network initialization을 진행한다. """
+        """ network initialization. """
         for name, network in self.named_children():
             # Do not initialize the FAN parameters
             print(name)
@@ -119,7 +110,7 @@ class Solver(nn.Module):
                 print('Initializing %s...' % name)
                 network.apply(utils.he_init)
         
-        """ initialization이 끝난 후에, pretrained clip을 load """
+        """ after initialization, load pretrained clip """
         self.clip_model, preprocess = clip.load('ViT-B/32', device="cpu", jit=False)
         self.clip_model = self.clip_model.to(self.device)
         """ freeze the network parameters """
@@ -127,17 +118,17 @@ class Solver(nn.Module):
             clip_param.requires_grad = False
 
     def _save_checkpoint(self, step):
-        """ checkpoint 저장 """
+        """ save checkpoint """
         for ckptio in self.ckptios:
             ckptio.save(step)
 
     def _load_checkpoint(self, step):
-        """ checkpoint 불러오기 """
+        """ load checkpoints """
         for ckptio in self.ckptios:
             ckptio.load(self.args, step)
 
     def _reset_grad(self):
-        """ gradient 초기화 """
+        """ zero initialization gradient """
         for optim in self.optims.values():
             optim.zero_grad()
 
@@ -178,8 +169,6 @@ class Solver(nn.Module):
         return sim_val_src, sim_val_ref, sim_val_src_base , sim_val_ref_base, src_mask, ref_mask
 
     def get_data_iter(self, args, loaders):
-        """ iter 당 data를 가져오는 함수 """
-        #import pdb; pdb.set_trace()
         try:
             x_src, real_y_src = next(self.train_src)
             x_ref, x_ref_2, real_y_ref = next(self.train_ref)
@@ -351,7 +340,6 @@ class Solver(nn.Module):
             with torch.no_grad():
                 # generate images for debugging
                 if (i+1) % args.sample_every == 0:
-                    # validation에 사용할 이미지와 레이블을 뽑는다.
                     try:
                         inputs_val_src, real_y_src = next(self.val_src)
                         inputs_val_ref, _, real_y_ref_val = next(self.val_ref)
@@ -517,9 +505,6 @@ def get_label_from_sim_one(args, sim_fake, sim_fake_base, device="cuda"):
     return y_fake
 
 def get_label_from_sim(args, prompt_idx, sim_val_src, sim_val_ref, sim_val_src_base=None, sim_val_ref_base=None, device="cuda"):
-    """
-    get_label_from_sim 함수를 src, ref input에 대하여 각각 한번씩 실행후 반환해주는 함수.
-    """
     y_val_src = get_label_from_sim_one(args, sim_val_src, sim_val_src_base, device=device) 
     y_val_ref = get_label_from_sim_one(args, sim_val_ref, sim_val_ref_base, device=device)
     return y_val_src, y_val_ref
@@ -527,9 +512,6 @@ def get_label_from_sim(args, prompt_idx, sim_val_src, sim_val_ref, sim_val_src_b
 #   get_unsup_labels(args, nets, x_real,         x_ref,          clip_model, prompt, prompt_idx, base_template, self.device, norm=norm)
 def get_unsup_labels(args, nets, inputs_val_src, inputs_val_ref, clip_model, prompt, prompt_idx, base_template, device, input_fake=None, detach=True):
     if input_fake is not None :
-        """ 생성된 이미지에 대해서만 similarity, label 값을 계산함 """
-        """ base는 prompt learning 안된 원래 clip model에서 feature를 얻어내려고함. """
-        """ 생성된 이미지로는 prompt learning하지 않음, detach=True """
         sim_fake = cal_clip_loss(args, nets, input_fake, clip_model, prompt, detach=detach, device=device)
         sim_fake_base = get_sim_from_clip(args, input_fake, clip_model, base_template, device=device) #cal_clip_loss(args, nets, input_fake, clip_model, base_template, device=device)
 
@@ -540,15 +522,13 @@ def get_unsup_labels(args, nets, inputs_val_src, inputs_val_ref, clip_model, pro
         return sim_fake, y_fake
 
     else:
-        """ supversied가 아니면. """
-        """ 생성 쪽에서는 prompt쪽 update에 영향을 끼치지 않기위해 detach 진행 """
         sim_val_src = cal_clip_loss(args, nets, inputs_val_src, clip_model, prompt, detach=detach, device=device)
         sim_val_ref = cal_clip_loss(args, nets, inputs_val_ref, clip_model, prompt, detach=detach,device=device)
         sim_val_src_base = None
         sim_val_ref_base = None
 
         if args.use_base:
-            """ base는 clip으로 부터 추출해 학습 안되게함 """
+            """ base_prompt is not learnable parameters """
             #get_sim_from_clip(args, x, clip_model, prompt, device="cuda"):
             sim_val_src_base = get_sim_from_clip(args, inputs_val_src, clip_model, base_template, device=device)#cal_clip_loss(args, nets, inputs_val_src, clip_model, base_template, device=device)
             sim_val_ref_base = get_sim_from_clip(args, inputs_val_ref, clip_model, base_template, device=device)#cal_clip_loss(args, nets, inputs_val_src, clip_model, base_template, device=device)
@@ -619,11 +599,11 @@ def compute_g_unsup_loss(nets, args, clip_model, prompt, base_template, prompt_i
         x_cyc = nets.generator(x_fake, s_org)
         loss_cyc += torch.mean(torch.abs(x_cyc - x_real))  
 
-    """ total loss summation 과정. """
+    """ total loss summation"""
     loss = loss_adv + args.lambda_sty*loss_sty
 
     if args.ds:
-        """ diversity loss 는 minus 로 """
+        """ diversity loss """
         loss -= args.lambda_ds * loss_ds
     if args.cycle:
         loss += args.lambda_cyc * loss_cyc
