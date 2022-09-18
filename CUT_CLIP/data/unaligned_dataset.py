@@ -31,23 +31,18 @@ class UnalignedDataset(BaseDataset):
         """
 
         BaseDataset.__init__(self, opt)
-        #self.dir_A = os.path.join(opt.dataroot, opt.phase + 'night')  # create a path '/path/to/data/trainA'
-        #self.dir_B = os.path.join(opt.dataroot, opt.phase + 'sunny')  # create a path '/path/to/data/trainB'
-        
-        # self.dir_A = '/home/hamacojr/lunit/af_10' #'/home/cvlab04/project/i2i/CUT_CLIP/results/cloudy'
-        #self.dir_A = '/home/cvlab06/project/i2i/food-10'
+
         """ 여기 데이터셋 부분 바꿔주면 됨 """
         self.dataset = "ffhq"
 
         if ("celeb" in self.dataset) or ("ffhq" in self.dataset):
-            self.dir_A = opt.dir_A#"/root/project/2022_clip/CelebAMask-HQ/CelebA-HQ-img/"
+            self.dir_A = opt.dir_A              #"/root/project/2022_clip/CelebAMask-HQ/CelebA-HQ-img/"
             self.ffhq_anno_path = opt.anno_path #"/root/project/2022_clip/CelebAMask-HQ/CelebAMask-HQ-attribute-anno.txt"
             self.annotations, self.selected_attrs = self.load_annotations()
             self.img_list = sorted(self.annotations.keys())
-            #import pdb; pdb.set_trace()
         else:
             # animal, food ...
-            self.dir_A = opt.dir_A#'/home/cvlab06/project/i2i/food-10'
+            self.dir_A = opt.dir_A              #'/home/cvlab06/project/i2i/food-10'
         
         if opt.phase == "test" and not os.path.exists(self.dir_A) \
            and os.path.exists(os.path.join(opt.dataroot, "valA")):
@@ -91,10 +86,8 @@ class UnalignedDataset(BaseDataset):
         if selected_attrs is None:
             selected_attrs = attrs
         selected_attrs_idx = [attrs.index(a) for a in selected_attrs]
-        #import pdb; pdb.set_trace()
 
         annotations = {}
-        #annotations = []
         for line in lines[2:]:
             #import pdb;pdb.set_trace()
             tokens = line.split()
