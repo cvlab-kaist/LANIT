@@ -31,14 +31,14 @@ class PromptLearner(nn.Module):
             suffix_embedding = clip_model.token_embedding(prompt_suffix).squeeze(0)
             class_embedding = clip_model.token_embedding(class_tokens)
 
-            sos_token = prefix_embedding[0] # 항상 일정하니까 하나로 둠.
+            sos_token = prefix_embedding[0] 
             eos_token = prefix_embedding[self.n_prompt_prefix + 1]
-            padding = prefix_embedding[-1] # 항상 일정하니까 하나로 둠.
+            padding = prefix_embedding[-1]
 
         class_embeddings = []
         for i, l in enumerate(self.len_classes):
             class_embeddings.append(nn.Parameter(
-                class_embedding[i, 1:l+1] # 클래스도 딱 ctx부분만. 
+                class_embedding[i, 1:l+1]
             ))
 
         rand_tokens = torch.zeros(K - len(classes), rand_token_len, class_embedding.size(-1)).to(device)
@@ -51,9 +51,7 @@ class PromptLearner(nn.Module):
 
         with torch.no_grad():
             self.class_tokens = nn.ParameterList(class_embeddings) # List of l, 512
-            # suffix도 사이만.
             self.suffix_tokens = nn.Parameter(suffix_embedding[1:1 + self.n_prompt_suffix]) # n_prompt, 512
-            """ class token 과 suffix_token은 update 안함 -> prefix만 update 진행. """
             self.class_tokens.requires_grad = False
             self.suffix_tokens.requires_grad = False
 
