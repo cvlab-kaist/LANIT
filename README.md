@@ -134,7 +134,7 @@ Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
 
 The example shell script is located in "./shell"
 
-You can donwload the pretarined checkpoints through this google drive link: [Google Drive](https://arxiv.org/list/cs.CV/recent)
+You can donwload the pretarined checkpoints through this google drive link: [Google Drive](https://drive.google.com/drive/folders/1_LaOg33ykk6OVU_leEoYrSuM6KaR8cY9?usp=sharing)
 
 * Reference-guided inference code(CelebA-HQ):
 ```
