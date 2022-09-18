@@ -134,6 +134,8 @@ Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
 
 The example shell script is located in "./shell"
 
+You can donwload the pretarined checkpoints through this google drive link: [Google Drive](https://arxiv.org/list/cs.CV/recent)
+
 * Reference-guided inference code(CelebA-HQ):
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py\
