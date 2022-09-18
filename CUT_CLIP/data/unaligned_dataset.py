@@ -32,8 +32,7 @@ class UnalignedDataset(BaseDataset):
 
         BaseDataset.__init__(self, opt)
 
-        """ 여기 데이터셋 부분 바꿔주면 됨 """
-        self.dataset = "ffhq"
+        self.dataset = opt.dataset #"ffhq"
 
         if ("celeb" in self.dataset) or ("ffhq" in self.dataset):
             self.dir_A = opt.dir_A              #"/root/project/2022_clip/CelebAMask-HQ/CelebA-HQ-img/"
