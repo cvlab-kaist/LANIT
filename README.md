@@ -1,4 +1,4 @@
-## LANIT: Language-Driven Image-to-Image Translation for Unlabeled Data
+## LANIT: Language-Driven Image-to-Image Translation for Unlabeled Data (CVPR 2023)
 <a href="https://arxiv.org/abs/2208.14889"><img src="https://img.shields.io/badge/arXiv-2208.14889-%23B31B1B"></a>
 <a href="https://KU-CVLAB.github.io/LANIT/"><img src="https://img.shields.io/badge/Project%20Page-online-brightgreen"></a>
 
