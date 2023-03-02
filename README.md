@@ -102,7 +102,7 @@ For example, in the case of animalfaces, the code is written as below:
 
 The example shell script is located in "./shell"
 
-* step2 setting
+* step1 setting
 ```
 python main.py \
 --name $name \
