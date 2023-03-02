@@ -217,7 +217,7 @@ If you find this research useful, please consider citing:
 ````BibTeX
 @article{park2022lanit,
   title = {LANIT: Language-Driven Image-to-Image Translation for Unlabeled Data},
-  author = {Park, Jihye and Kim, Soohyun and Kim, Sunwoo and Yoo, Jaejun and Uh, Youngjung and Kim, Seungryong},
+  author = {Park, Jihye and Kim, Sunwoo and Kim, Soohyun and Cho, seokju and Yoo, Jaejun and Uh, Youngjung and Kim, Seungryong},
   journal = {arXiv preprint arXiv:2208.14889},
   year = {2022},
 }
