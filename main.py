@@ -18,8 +18,6 @@ import torch
 from core.data_loader import get_train_loader
 from core.data_loader import get_test_loader
 from core.solver import Solver
-# import cluster
-import clip
 import util as util
 
 
@@ -40,20 +38,17 @@ def main(args):
     solver = Solver(args)
 
     if args.mode == 'train':
-        #import pdb;pdb.set_trace()
-        #assert len(subdirs(args.train_img_dir)) == args.num_domains
-        #assert len(subdirs(args.val_img_dir)) == args.num_domains
         loaders = Munch(src=get_train_loader(root=args.train_img_dir,
                                              which='source',
                                              img_size=args.img_size,
-                                             batch_size=1, #args.batch_size,
+                                             batch_size=args.batch_size,
                                              shuffle = True,
                                              prob=args.randcrop_prob,
                                              num_workers=args.num_workers),
                         ref=get_train_loader(root=args.train_img_dir,
                                              which='reference',
                                              img_size=args.img_size,
-                                             batch_size=1, #args.batch_size,
+                                             batch_size=args.batch_size,
                                              shuffle = True,
                                              prob=args.randcrop_prob,
                                              num_workers=args.num_workers),
@@ -71,14 +66,14 @@ def main(args):
                                             num_workers=args.num_workers)
                                             )
 
-        solver.train(loaders) #, clip_model, prompt)
+        solver.train(loaders)
 
     elif args.mode == 'sample':
         loaders = Munch(src=get_test_loader(root=args.src_dir,
                                             which='source',
                                             img_size=args.img_size,
                                             batch_size=args.val_batch_size,
-                                            shuffle=True,
+                                            shuffle=False,
                                             num_workers=args.num_workers),
                         ref=get_test_loader(root=args.ref_dir,
                                             which='reference',
@@ -90,6 +85,9 @@ def main(args):
 
     elif args.mode == 'eval':
         solver.evaluate()
+
+    elif args.mode == "fid":
+       solver.FID()
 
     else:
         raise NotImplementedError
@@ -115,14 +113,20 @@ if __name__ == '__main__':
                         help='Weight for cyclic consistency loss')
     parser.add_argument('--lambda_sty', type=float, default=1,
                         help='Weight for style reconstruction loss')
-    parser.add_argument('--lambda_dc', type=float, default=1,
+    parser.add_argument('--lambda_lpips', type=float, default=1,
+                        help='Weight for style reconstruction loss')
+    parser.add_argument('--lambda_dc', type=float, default=0.5,
                         help='Weight for clip contrastive loss')
     parser.add_argument('--lambda_ds', type=float, default=1,
                         help='Weight for diversity sensitive loss')
-    parser.add_argument('--ds_iter', type=int, default=100000,
+    parser.add_argument('--lambda_dc_reg', type=float, default=1,
+                        help='Weight for diversity sensitive loss')
+    parser.add_argument('--ds_iter', type=int, default=130000,
                         help='Number of iterations to optimize diversity sensitive loss')
     parser.add_argument('--lambda_reg', type=float, default=1,
                         help='Weight for R1 regularization')
+    parser.add_argument('--lambda_p', type=float, default=0.5,
+                        help='Weight for prompt learning')
     parser.add_argument('--w_hpf', type=float, default=0,
                         help='weight for high-pass filtering')
 
@@ -133,7 +137,7 @@ if __name__ == '__main__':
                         help='Number of total iterations')
     parser.add_argument('--resume_iter', type=int, default=0,
                         help='Iterations to resume training/testing')
-    parser.add_argument('--batch_size', type=int, default=8,
+    parser.add_argument('--batch_size', type=int, default=7,
                         help='Batch size for training')
     parser.add_argument('--val_batch_size', type=int, default=8,
                         help='Batch size for validation')
@@ -141,7 +145,7 @@ if __name__ == '__main__':
                         help='Learning rate for D, E and G')
     parser.add_argument('--m_lr', type=float, default=1e-4,
                         help='Learning rate for mapping network')
-    parser.add_argument('--p_lr', type=float, default=1e-6,
+    parser.add_argument('--p_lr', type=float, default=2e-5,
                         help='Learning rate for promptLearner')
     parser.add_argument('--beta1', type=float, default=0.0,
                         help='Decay rate for 1st moment of Adam')
@@ -154,9 +158,9 @@ if __name__ == '__main__':
 
     # misc
     parser.add_argument('--mode', type=str, required=True,
-                        choices=['train', 'sample', 'eval', 'align'],
+                        choices=['train', 'sample', 'eval', 'align', 'fid'],
                         help='This argument is used in solver')
-    parser.add_argument('--num_workers', type=int, default=8,
+    parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of workers used in DataLoader')
     parser.add_argument('--seed', type=int, default=777,
                         help='Seed for random number generator')
@@ -172,8 +176,9 @@ if __name__ == '__main__':
                         help='Directory containing validation images')
     parser.add_argument('--sample_dir', type=str, default='expr/samples',
                         help='Directory for saving generated images')
-    parser.add_argument('--checkpoint_dir', type=str, default='/root/data/lunit_weight',
+    parser.add_argument('--checkpoint_dir', type=str, default='~/dataset1/smoothing/food/checkpoints',
                         help='Directory for saving network checkpoints')
+    parser.add_argument('--lpips_type', default='alex', type=str, help='LPIPS backbone')
 
     # directory for calculating metrics
     parser.add_argument('--eval_dir', type=str, default='expr/eval',
@@ -226,22 +231,30 @@ if __name__ == '__main__':
     parser.add_argument('--step2',action='store_true', help='step2')
 
     parser.add_argument('--dc',action='store_true', help='use domain consistency loss')
+    parser.add_argument('--dcycle',action='store_true', help='use domain regularization loss')
     parser.add_argument('--ds',action='store_true', help='use style diversification loss')
+    parser.add_argument('--recon_lpips',action='store_true', help='use lpips consistency loss')
     parser.add_argument('--cycle',action='store_true', help='use cycle consistency loss')
 
     parser.add_argument('--zero_cut',action='store_true', help='use cut under zero if top k > 1')
 
     parser.add_argument('--multi_hot',action='store_true', help='multi-hot encoding of logits of style E & Discriminator ')
-    parser.add_argument('--topk', type=int, default=1, help='top_k value')
+    parser.add_argument('--topk', action='store_true', help='top_k value')
 
-    # parser.add_argument('--thresholding',action='store_true', help='multi-hot & thresholding')
     parser.add_argument('--use_base', action='store_true', help='filtering out of class to be used')
     parser.add_argument('--cal_fid', action='store_true', help='calculate fid when evaluate')
-
+    parser.add_argument('--dict', action='store_true', help='calculate fid when evaluate')
 
     """ add this arguemnt in step2. """
-    # step2
-    parser.add_argument('--use_prompt',action='store_true', help='if true, start prompt learning at early and second stage.')
+    parser.add_argument('--text_aug',    action='store_true', help='text augmentation')
+    parser.add_argument('--base_fix',    action='store_true', help='fix base prompt')
+    parser.add_argument('--g_update',    action='store_true', help='use augmentation with mapping network')
+    parser.add_argument('--t_update',    action='store_true', help='use augmentation with mapping network')
+    parser.add_argument('--gt_update',    action='store_true', help='use augmentation with mapping network')
+    parser.add_argument('--alter_update',    action='store_true', help='use augmentation with mapping network')
+
+    parser.add_argument('--use_scheduler',    action='store_true', help='use augmentation with mapping network')
+
     
     """ end """
 

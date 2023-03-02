@@ -134,6 +134,7 @@ def get_train_loader(root, which='source', img_size=256,
         transforms.Normalize(mean=[0.5, 0.5, 0.5],
                              std=[0.5, 0.5, 0.5]),
     ])
+
     if which == 'source':
         dataset = ImageFolder(root, transform)
     elif which == 'reference':
@@ -141,7 +142,7 @@ def get_train_loader(root, which='source', img_size=256,
     else:
         raise NotImplementedError 
     
-    if  ('animal' in root) or ('af' in root) or ('food' in root):
+    if  ('animal' in root) or ('af' in root) or ('food' in root) or ('cls' in root):
         class_to_use = [0,1,2,3,4,5,6,7,8,9]
     
         min_data = 99999999
@@ -255,12 +256,12 @@ def get_test_loader(root, which='source', img_size=224, batch_size=32,
     ])
         
     if which == 'source':
-        dataset = ImageFolder(root, transform)
+        dataset = ImageFolder(root, transform) # return: img
     elif which == 'reference':
-        dataset = ReferenceDataset(root, transform) #ReferenceDataset(root, transform)
+        dataset = ReferenceDataset(root, transform) # return: ref1, ref2
     
     #root = root.split("/")
-    if ('animal' in root) or ('af' in root) or ('food' in root):
+    if ('animal' in root) or ('af' in root) or ('food' in root) or ('cls' in root):
         """ animalface10, food10 을 기준으로 잡음. """
         class_to_use = [0,1,2,3,4,5,6,7,8,9]
 

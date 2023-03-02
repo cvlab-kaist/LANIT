@@ -21,11 +21,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.utils as vutils
+from scipy.stats import truncnorm
 
 def get_prompt_and_att(args):
     if 'lsun_car' in args.dataset:
-        init_prompt = 'a photo of the {}.'
-        base_template = ["a photo of the car."]
+        init_prompt = 'a photo of the car about {}.'
+        base_template = ["a photo of the car about."]
         all_prompt = ['red car', 'orange car', 'gray car', 'blue car', 'truck', 'white car', 'sports car', 'van', 'sedan','compact car']
         
         if args.num_domains == 4:
@@ -37,7 +38,7 @@ def get_prompt_and_att(args):
 
     if 'metface' in args.dataset:
         init_prompt = 'a portrait with {}.'
-        base_template = ["a portrait."]
+        base_template = ["a portrait with."]
         all_prompt = ['oil painting', 'grayscale', 'black hair', 'wavy hair', 'male', 'mustache', 'smiling', 'gray hair', 'blonde hair','sculpture']
         
         if args.num_domains == 4:
@@ -48,20 +49,20 @@ def get_prompt_and_att(args):
             prompt = ['oil painting', 'grayscale', 'black hair', 'wavy hair', 'male', 'mustache', 'smiling', 'gray hair', 'blonde hair','sculpture']
 
     if 'landscape' in args.dataset:
-        init_prompt = 'a photo of the scene {}.'
-        base_template = ["a photo of the scene."]
-        all_prompt = ['with mountain', 'with field', 'with lake', 'with ocean', 'with waterfall', 'in summer', 'in winter', 'on a sunny day', 'on a cloudy day', 'at sunset']
+        init_prompt = 'a photo of the scene about {}.'
+        base_template = ["a photo of the scene about."]
+        all_prompt = ['mountain', 'field', 'lake', 'ocean', 'waterfall', 'summer', 'winter', 'a sunny day', 'a cloudy day', 'sunset']
         
         if args.num_domains == 4:
             prompt = []
         elif args.num_domains == 7:
             prompt = []
         elif args.num_domains == 10:
-            prompt = ['with mountain', 'with field', 'with lake', 'with ocean', 'with waterfall', 'in summer', 'in winter', 'on a sunny day', 'on a cloudy day', 'at sunset']
+            prompt = ['mountain', 'field', 'lake', 'ocean', 'waterfall', 'summer', 'winter', 'a sunny day', 'a cloudy day', 'sunset']
     
     if 'animal' in args.dataset:
-        init_prompt = 'a photo of the {}.'
-        base_template = ["a photo of the animal face."]
+        init_prompt = 'a photo of the animalface of {}.'
+        base_template = ["a photo of the animalface of."]
         all_prompt = ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois', 'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger']
             
         if args.num_domains == 4:
@@ -69,8 +70,11 @@ def get_prompt_and_att(args):
         elif args.num_domains == 7:
             prompt = ['beagle', 'dandie dinmont terrier', 'golden retriever', 'white fox', 'tabby cat', 'snow leopard', 'bengal tiger']
         elif args.num_domains == 10:
-            prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
-                       'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger']
+            if args.dict:
+                prompt = ['dandie dinmont terrier','malinois','appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger', 'grey fox', 'german shepherd dog']
+            else:
+                prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
+                        'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger']
         elif args.num_domains == 13:
             prompt =  ['beagle', 'dandie dinmont terrier', 'golden retriever', 'malinois',\
                        'appenzeller sennenhund', 'white fox', 'tabby cat', 'snow leopard', 'lion', 'bengal tiger',\
@@ -81,8 +85,8 @@ def get_prompt_and_att(args):
                        'french bulldog', 'mink', 'maned wolf', 'monkey', 'toy poodle', 'angora rabbit']
 
     elif 'food' in args.dataset:
-        init_prompt = 'a photo of the {}.'
-        base_template = ["a photo of the food."]
+        init_prompt = 'a photo of the food of {}.'
+        base_template = ["a photo of the food of."]
         all_prompt = [ "baby back ribs", "beef carpaccio", "beignets", "bibimbap", "caesar salad",\
                             "clam chowder", "Chinese dumplings", "edamame", "bolognese", "strawberry shortcake"]
 
@@ -104,31 +108,33 @@ def get_prompt_and_att(args):
 
     elif args.dataset in ['ffhq', 'celeb']:
         init_prompt = 'a face with {}.'
-        base_template = ["a face."]
+        base_template = ['a face with.']
         all_prompt = ['5 o clock shadow', 'arched eyebrows', 'attractive face', 'bags under eyes', 'bald', 'bangs', 'big lips' ,'big Nose',\
                     'black hair','blond hair', 'blurry', 'brown hair', 'bushy eyebrows', 'cubby', 'double chin', 'eyeglasses', 'goatee', \
                     'gray hair', 'heavy makeup', 'high cheekbones', 'male', 'mouth slightly open', 'mustache', 'narrow eyes', 'no beard', \
                     'oval face', 'pale skin', 'pointy nose', 'receding hairline', 'rosy cheeks', 'sideburns', 'smiling', 'straight hair', \
                     'wavy hair', 'wearing earrings', 'wearing hat', 'wearing lipstick', 'wearing necklace', 'wearing necktie', 'young'] 
-
+        
+        if args.num_domains == 2:
+            prompt = ['male', 'female']
         if args.num_domains == 4:
-            prompt = ['blond hair', 'bangs' , 'smiling', 'eyeglasses',] 
+            prompt = ['blond hair', 'bangs' , 'smiling', 'wearing lipstick'] 
         elif args.num_domains == 7:
-            prompt = ['blond hair', 'wavy hair', 'black hair' , 'smiling', 'eyeglasses', 'goatee', 'bangs',] 
+            prompt = ['blond hair', 'black hair' , 'smiling', 'wearing lipstick',  'arched eyebrows', 'bangs','mustache'] 
         elif args.num_domains == 13:
-            prompt = ['blond hair', 'bald', 'wavy hair', 'black hair' , 'smiling',\
-                   'straight hair', 'eyeglasses', 'wearing lipstick', 'bangs', 'arched eyebrows', 'bang', 'heavy makeup', 'male'] 
+            prompt = ['bangs', 'blond hair', 'black hair' ,'smiling', 'arched eyebrows','heavy makeup','mustache', 'straight hair', 'wearing lipstick', 'male',
+                   'eyeglass', 'pale skin', 'young'] 
         elif args.num_domains == 16:
-            prompt = ['blond hair', 'bald', 'wavy hair', 'black hair' , 'smiling',\
-                   'straight hair', 'eyeglasses', 'goatee', 'bangs', 'arched eyebrows', 'young', 'heavy makeup', 'male', 'with hand', 'pale skin', 'bang']
+            prompt = ['bangs', 'blond hair', 'black hair' ,'smiling', 'arched eyebrows','heavy makeup','mustache', 'straight hair', 'wearing lipstick', 'male',
+                   'eyeglass', 'pale skin', 'young', 'wavy hair', 'bald', 'goatee'] 
         elif args.num_domains == 10:
-            prompt =  ['bangs', 'blond hair', 'black hair' ,'smiling', 'pale skin','heavy makeup','no beard', 'rosy cheeks','wearing lipstick', 'male']
+            prompt =  ['bangs', 'blond hair', 'black hair' ,'smiling', 'arched eyebrows','heavy makeup','mustache', 'straight hair', 'wearing lipstick', 'male']
         elif args.num_domains == 40:
             prompt = ['5 o clock shadow', 'arched eyebrows', 'attractive face', 'bags under eyes', 'bald', 'bangs', 'big lips' ,'big Nose',\
                 'black hair','blond hair', 'blurry', 'brown hair', 'bushy eyebrows', 'cubby', 'double chin', 'eyeglasses', 'goatee', \
                 'gray hair', 'heavy makeup', 'high cheekbones', 'male', 'mouth slightly open', 'mustache', 'narrow eyes', 'no beard', \
                 'oval face', 'pale skin', 'pointy nose', 'receding hairline', 'rosy cheeks', 'sideburns', 'smiling', 'straight hair', \
-                'wavy hair', 'wearing earrings', 'wearing hat', 'wearing lipstick', 'wearing necklace', 'wearing necktie', 'young'] 
+                'wavy hair', 'wearing earrings', 'wearing hat', 'wearing lipstick', 'wearing necklace', 'wearing necktie', 'young']
         
     prompt_idx = []
     for data in prompt:
@@ -157,7 +163,6 @@ def print_network(network, name):
     num_params = 0
     for p in network.parameters():
         num_params += p.numel()
-    # print(network)
     print("Number of parameters of %s: %i" % (name, num_params))
 
 
@@ -195,6 +200,21 @@ def translate_and_reconstruct(nets, args, x_src, y_src, x_ref, y_ref, filename):
     del x_concat
 
 
+def get_truncated_noise(n_samples, z_dim, truncation):
+    '''
+    Function for creating truncated noise vectors: Given the dimensions (n_samples, z_dim)
+    and truncation value, creates a tensor of that shape filled with random
+    numbers from the truncated normal distribution.
+    Parameters:
+        n_samples: the number of samples to generate, a scalar
+        z_dim: the dimension of the noise vector, a scalar
+        truncation: the truncation value, a non-negative scalar
+    '''
+    #### START CODE HERE ####
+    truncated_noise = truncnorm.rvs(-truncation,truncation, size=(n_samples, z_dim))
+    #### END CODE HERE ####
+    return torch.Tensor(truncated_noise)
+
 @torch.no_grad()
 def translate_using_latent(nets, args, x_src, x_ref, y_ref, filename):
             
@@ -202,7 +222,7 @@ def translate_using_latent(nets, args, x_src, x_ref, y_ref, filename):
     wb = torch.ones(1, C, H, W).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
     z_trg = torch.randn(N, args.latent_dim).to(x_src.device)
-    
+
     y_ref_lst = [0 for i in range(args.num_domains)]
     
     for i in args.latent_num:

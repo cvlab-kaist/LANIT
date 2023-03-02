@@ -2,8 +2,6 @@
 <a href="https://arxiv.org/abs/2208.14889"><img src="https://img.shields.io/badge/arXiv-2208.14889-%23B31B1B"></a>
 <a href="https://KU-CVLAB.github.io/LANIT/"><img src="https://img.shields.io/badge/Project%20Page-online-brightgreen"></a>
 
-<!--Check out project [[Project Page](https://KU-CVLAB.github.io/LANIT/)] and the paper on [[arXiv](https://arxiv.org/abs/2208.14889)].-->
-
 <!--ECCV'22 camera ready version can be found here : [[arXiv](https://arxiv.org/abs/2207.10866)].-->
 
 ![alt text](./images/teaser_lanit.png)
@@ -100,84 +98,118 @@ For example, in the case of animalfaces, the code is written as below:
 * base_template: prompt that includes all the class prompts defined by users.
 * prompt: the list that include class prompts defined by users.
 
-## Training code(example of CelebA-HQ):
+## Training code (example of CelebA-HQ):
 
 The example shell script is located in "./shell"
 
+* step2 setting
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py\
---name celeb-10\
---dataset celeb\
---mode train\
---train_img_dir ./dataset/CelebA-HQ/train\
---val_img_dir ./dataset/CelebA-HQ/test\
---checkpoint_dir ./checkpoints/lanit_celeb_weight/\
---step1\
---num_domains 10\
---cycle\
---dc\
---ds\
---multi_hot\
---topk 3\
---use_base\
---zero_cut\
---w_hpf 0\
+python main.py \
+--name $name \
+--dataset celeb \
+--mode train \
+--train_img_dir ../datasets/CelebAMask-HQ/celeba \
+--val_img_dir ../datasets/CelebAMask-HQ/celeba \
+--checkpoint_dir ./expr/checkpoint/lanit_celeb_weight/ \
+--step1 \
+--num_domains 10 \
+--cycle \
+--ds \
+--multi_hot \
+--use_base \
+--zero_cut \
+--w_hpf 0 \
+--text_aug \
+--dcycle \
+--base_fix \
+
 ```
 
-* In step1(don't do prompt learning): num_domain=10, topk=3, use_all_losses(cycle,dc,ds), use_phi_domain(use_base, zero_cut)
-* In step2: change --step1 to --step2, add --use_prompt
+* step2 setting
+
 ```
---num_domain: number of domain that we want to consider  
- --topk: number of multi-attribute that we want to consider in an image. (In this paper, CelebA-HQ=3, AnimalFaces,Food=1)  
- --use_prompt: get PromptLearner from ./core/model/
- ```
+python main.py \
+--name $name \
+--dataset celeb \
+--mode train \
+--train_img_dir ../datasets/CelebAMask-HQ/celeba \
+--val_img_dir ../datasets/CelebAMask-HQ/celeba \
+--checkpoint_dir ./expr/checkpoint/lanit_celeb_weight/ \
+--step2 \
+--num_domains 10 \
+--cycle \
+--ds \
+--multi_hot \
+--use_base \
+--zero_cut \
+--w_hpf 0 \
+--text_aug \
+--dcycle \
+--resume_iter 99000 \
+--p_lr 1e-6 \
+--gt_update \
+--lambda_dc_reg 0. \
+
+```
  
 # Inference
 Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
 
 The example shell script is located in "./shell"
 
-You can donwload the pretarined checkpoints through this google drive link: [Google Drive](https://drive.google.com/drive/folders/1_LaOg33ykk6OVU_leEoYrSuM6KaR8cY9?usp=sharing)
+* Reference-guided inference code (CelebA-HQ):
+```
+python main.py \
+--name $name \
+--dataset celeb \
+--mode sample \
+--train_img_dir ../datasets/CelebAMask-HQ/celeba \
+--val_img_dir ../datasets/CelebAMask-HQ/celeba \
+--src_dir ../datasets/CelebAMask-HQ/celeba \
+--ref_dir ../datasets/CelebAMask-HQ/celeba \
+--checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/] \
+--step1 \
+--num_domains 10 \
+--cycle \
+--ds \
+--multi_hot \
+--use_base \
+--zero_cut \
+--w_hpf 0 \
+--text_aug \
+--dcycle \
+--base_fix \
+--val_batch_size 8 \
+--resume_iter [iteration at which the checkpoint is saved, ex) 98000] \
+--infer_mode reference \
+```
 
-* Reference-guided inference code(CelebA-HQ):
+* Latent-guided inference code (CelebA-HQ):
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py\
---name celeb-10\
---dataset celeb\
---mode sample\
---val_batch_size 8\
---infer_mode reference\
---src_dir ./dataset/CelebA-HQ/train\
---ref_dir ./dataset/CelebA-HQ/test\
---checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/]\ 
---resume_iter [iteration at which the checkpoint is saved, ex) 98000]
---step1\
---num_domains 10\
---multi_hot\
---topk 3\
---use_base\
---zero_cut\
-```
-
-* Latent-guided inference code(CelebA-HQ):
-```
-CUDA_VISIBLE_DEVICES=0 python main.py\
---name celeb-10\
---dataset celeb\
---mode sample\
---val_batch_size 8\
+python main.py \
+--name $name \
+--dataset celeb \
+--mode sample \
+--train_img_dir ../datasets/CelebAMask-HQ/celeba \
+--val_img_dir ../datasets/CelebAMask-HQ/celeba \
+--src_dir ../datasets/CelebAMask-HQ/celeba \
+--ref_dir ../datasets/CelebAMask-HQ/celeba \
+--checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/] \
+--step1 \
+--num_domains 10 \
+--cycle \
+--ds \
+--multi_hot \
+--use_base \
+--zero_cut \
+--w_hpf 0 \
+--text_aug \
+--dcycle \
+--base_fix \
+--val_batch_size 8 \
+--resume_iter [iteration at which the checkpoint is saved, ex) 98000] \
 --infer_mode latent\
---latent_num 0 1 2\ # latent_num is the list that includes the attributes you want to translate.
---src_dir ./dataset/CelebA-HQ/train\
---ref_dir ./dataset/CelebA-HQ/test\
---checkpoint_dir [./checkpoints/args.dataset/args.name/, ex) ./checkpoints/celeb/celeb-10/]\ 
---resume_iter [iteration at which the checkpoint is saved, ex) 98000]
---step1\
---num_domains 10\
---multi_hot\
---topk 3\
---use_base\
---zero_cut\
+--latent_num 0 1 2\ # latent_num is the list that includes the attributes
 ```
 
 ### BibTeX

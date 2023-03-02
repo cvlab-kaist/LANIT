@@ -8,6 +8,7 @@ http://creativecommons.org/licenses/by-nc/4.0/ or send a letter to
 Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 """
 
+from mimetypes import suffix_map
 import copy
 import math
 
@@ -27,6 +28,8 @@ from torch.optim import lr_scheduler
 
 import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
+from template import * 
+
 
 from core.utils import *
 import copy
@@ -41,99 +44,300 @@ class PromptLearner(nn.Module):
         
         self.K = K
         self.rand_token_len = rand_token_len
-     
-        prompt_prefix = clip.tokenize(prefix).to(device)
-        prompt_suffix = clip.tokenize(suffix).to(device)
-        class_tokens = clip.tokenize(classes).to(device)
+
+        """ 1. tokenize """
+        prompt_prefix = clip.tokenize(prefix).to(device) # (1, 77),                prefix = "a face with"
+        prompt_suffix = clip.tokenize(suffix).to(device) # (1, 77)                 suffix = "."
+        class_tokens = clip.tokenize(classes).to(device) # (self.len_classes, 77), classes=['bangs', 'blond hair', ...,]
 
         self.n_prompt_prefix = self.count_token(prompt_prefix).item()
         self.n_prompt_suffix = self.count_token(prompt_suffix).item()
-        self.len_classes = self.count_token(class_tokens)
-        
+        self.len_classes = self.count_token(class_tokens) # tensor([1, 2, 2, 1, 2, 2, 2, 2, 2, 1], device='cuda:0'), 1='bangs', 2='blond hair', ...
+        self.dict_name = []
+        for k in range(len(class_tokens)):
+            self.dict_name.append("cls{0}".format(k))
+        dum_tokens = {}
+
         self.max_len = prompt_prefix.shape[-1]
 
+        """ 2. token embedding """
         with torch.no_grad():
-            prefix_embedding = clip_model.token_embedding(prompt_prefix).squeeze(0)
-            suffix_embedding = clip_model.token_embedding(prompt_suffix).squeeze(0)
-            class_embedding = clip_model.token_embedding(class_tokens)
+            # length = 77, [sos] [sentences] [eos] [pad]...[pad]
+            prefix_embedding = clip_model.token_embedding(prompt_prefix).squeeze(0) # (77, 512) # embedder (49040, 512)
+            suffix_embedding = clip_model.token_embedding(prompt_suffix).squeeze(0) # (77, 512)
+            class_embedding = clip_model.token_embedding(class_tokens)              # (self.len_classes, 77, 512)
 
-            sos_token = prefix_embedding[0] 
-            eos_token = prefix_embedding[self.n_prompt_prefix + 1]
-            padding = prefix_embedding[-1] 
+            self.sos_token = nn.Parameter(prefix_embedding[0]).to(device)
+            self.eos_token = nn.Parameter(prefix_embedding[self.n_prompt_prefix + 1]).to(device)
+            self.padding = nn.Parameter(prefix_embedding[-1]).to(device)
 
         class_embeddings = []
         for i, l in enumerate(self.len_classes):
             class_embeddings.append(nn.Parameter(
-                class_embedding[i, 1:l+1] # 클래스도 딱 ctx부분만. 
-            ))
+                class_embedding[i, 1:l+1] 
+            ).to(device))
 
-        rand_tokens = torch.zeros(K - len(classes), rand_token_len, class_embedding.size(-1)).to(device)
+        rand_tokens = torch.zeros(K - len(classes), rand_token_len, class_embedding.size(-1))#.to(device) # (0, 4, 512)
         nn.init.normal_(rand_tokens, std=0.02)
 
-        self.rand_tokens = nn.Parameter(rand_tokens) # K - len(classes), 1, 512
-
-        self.prefix_tokens = nn.Parameter(prefix_embedding[1:1 + self.n_prompt_prefix]) # (length_prefix, 512)
-        self.class_tokens = nn.ParameterList(class_embeddings) # List of l, 512
+        """ 3. parameterization of tokens """
+        self.prefix_tokens = nn.Parameter(prefix_embedding[1:1 + self.n_prompt_prefix]).to(device) # (len(prefix), 512)
+        """ 4. detach tokens not to update """
         with torch.no_grad():
-
-            self.suffix_tokens = nn.Parameter(suffix_embedding[1:1 + self.n_prompt_suffix]) # n_prompt, 512
             """ don't update class token and suffix_token, only update prefix. """
-
-            self.suffix_tokens.requires_grad = False
-            self.rand_tokens.requires_grad = False
-            
-        self.register_buffer('sos_token', sos_token)
-        self.register_buffer('eos_token', eos_token)
-        self.register_buffer('padding', padding)
+            cls_emb_dict = {}
+            for k in range(len(class_embeddings)):
+                cls_emb_dict[self.dict_name[k]] =class_embeddings[k]
+            self.class_embeddings = cls_emb_dict#.to(device)
+            self.suffix_tokens = nn.Parameter(suffix_embedding[1:1 + self.n_prompt_suffix]).to(device) # n_prompt, 512
+            self.rand_tokens = nn.Parameter(rand_tokens).to(device)
 
     def count_token(self, x):
         return (x != 0).sum(1) - 2
     
-    def get_embedding(self):
+    def get_embedding(self, device="cuda"):
         embeddings = []
-        for i, cls in enumerate(self.class_tokens):
+        with torch.no_grad():
+            self.sos_token = self.sos_token.to(device)
+            self.suffix_tokens = self.suffix_tokens.to(device)
+            self.eos_token =  self.eos_token.to(device)
+            self.padding =  self.padding.to(device)
+            for i, cls in enumerate(self.class_embeddings):
+                self.class_embeddings[cls] = self.class_embeddings[cls].to(device)
+
+        for i, cls in enumerate(self.class_embeddings):
             embed = torch.cat((
-                self.sos_token[None],
-                self.prefix_tokens,
-                cls,
+                self.sos_token[None], # self.dum_tokens["sos_token"][None],
+                self.prefix_embeddings[cls],#self.prefix_tokens,
+                self.class_embeddings[cls],#cls[self.dict_name[i]],
                 self.suffix_tokens,
-                self.eos_token[None]
+                self.eos_token[None], # self.dum_tokens["eos_token"][None],
+            ))
+            padding = self.padding[None].repeat(self.max_len - embed.size(0), 1)
+            #padding = self.dum_tokens["padding"][None].repeat(self.max_len - embed.size(0), 1)
+            embeddings.append(torch.cat((embed, padding), 0))
+        
+        embeddings = torch.stack(embeddings) # (self.len_classes, 77, 512)
+        return embeddings
+
+    def get_base_embedding(self, device="cuda"):
+        #self.prefix_tokens = self.prefix_tokens.to(device)
+        with torch.no_grad():
+            self.sos_token = self.sos_token.to(device)
+            self.suffix_tokens = self.suffix_tokens.to(device)
+            self.eos_token =  self.eos_token.to(device)
+            self.padding =  self.padding.to(device)
+
+        embeddings = []
+        for i, cls in enumerate(self.prefix_embeddings):
+            embed = torch.cat((
+                self.sos_token[None], # self.dum_tokens["sos_token"][None],
+                self.prefix_embeddings[cls],#self.prefix_tokens,
+                self.suffix_tokens,
+                self.eos_token[None], # self.dum_tokens["eos_token"][None],
             ))
             padding = self.padding[None].repeat(self.max_len - embed.size(0), 1)
             embeddings.append(torch.cat((embed, padding), 0))
-        embeddings = torch.stack(embeddings)
         
-        rand_len = self.rand_tokens.size(0)
+        embeddings = torch.stack(embeddings) # (self.len_classes, 77, 512)
+        return embeddings
 
-        rand_embeddings = torch.cat((
-            self.sos_token[None, None].repeat(rand_len, 1, 1),
-            self.prefix_tokens[None].repeat(rand_len, 1, 1),
-            self.rand_tokens,
-            self.suffix_tokens[None].repeat(rand_len, 1, 1),
-            self.eos_token[None, None].repeat(rand_len, 1, 1),
-        ), dim=1)
-        rand_embeddings = torch.cat((
-            rand_embeddings,
-            self.padding[None, None].repeat(rand_len, self.max_len - rand_embeddings.size(1), 1)
-        ), dim=1)
-        
-        return torch.cat((embeddings, rand_embeddings), 0)
-    
-    def forward(self, clip_model):
-        x = self.get_embedding()
-
+    def forward_prefix(self, clip_model, device="cuda"):
+        x = self.get_base_embedding() # = clip_model.token_embedding(text)
         x = x + clip_model.positional_embedding.to(clip_model.dtype)
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = clip_model.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
         x = clip_model.ln_final(x).type(clip_model.dtype)
 
-        # x.shape = [batch_size, n_ctx, transformer.width]
-        # take features from the eot embedding (eot_token is the highest number in each sequence)
-        x_cls = x[range(len(self.len_classes)), self.len_classes + self.n_prompt_prefix + self.n_prompt_suffix + 1] @ clip_model.text_projection
-        x_rand = x[len(self.len_classes):, self.rand_token_len + self.n_prompt_prefix + self.n_prompt_suffix + 1] @ clip_model.text_projection
+        x_cls = x[:, 1 + self.n_prompt_prefix + self.n_prompt_suffix] @ clip_model.text_projection
+        return x_cls
 
-        return torch.cat((x_cls, x_rand), 0)
+    def forward(self, clip_model, device="cuda"):
+        x = self.get_embedding(device) # = clip_model.token_embedding(text)
+        
+        x = x + clip_model.positional_embedding.to(clip_model.dtype)
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = clip_model.transformer(x)
+        x = x.permute(1, 0, 2)  # LND -> NLD
+        x = clip_model.ln_final(x).type(clip_model.dtype)
+
+        x_cls = x[range(len(self.len_classes)), self.len_classes + self.n_prompt_prefix + self.n_prompt_suffix + 1] @ clip_model.text_projection
+
+        return x_cls
+
+class PromptMean(nn.Module):
+    def __init__(self, args, K, device, classes, clip_model, templates):
+        super().__init__()
+        self.args = args
+        self.K = K
+        prefix = []
+        for temp in templates:
+            prefix_one, suffix = [x.strip() for x in temp.split('{}')]
+            prefix.append(prefix_one)
+
+        
+        """ 1. tokenize """
+        prompt_prefix = clip.tokenize(prefix).to(device) # (9(self.len_prefix), 77),                prefix = "a face with"
+        prompt_suffix = clip.tokenize(suffix).to(device) # (9, 77)                 suffix = "."
+        class_tokens = clip.tokenize(classes).to(device) # (self.len_classes, 77), classes=['bangs', 'blond hair', ...,] #self.len_classes
+
+        self.n_prompt_prefix = self.count_token(prompt_prefix) #tensor([3, 4, 4, 5, 4, 3, 3, 4, 5], device='cuda:0')
+        self.n_prompt_suffix = self.count_token(prompt_suffix).item() #tensor([1, 1, 1, 1, 1, 1, 1, 1, 1], device='cuda:0')
+        self.len_classes = self.count_token(class_tokens) # tensor([1, 2, 2, 1, 2, 2, 2, 2, 2, 1], device='cuda:0'), 1='bangs', 2='blond hair', ...
+        self.dict_name = []
+        self.prefix_dict_name = []
+
+        for k in range(len(class_tokens)):
+            self.dict_name.append("cls{0}".format(k))
+        
+        for k in range(len(prompt_prefix)):
+            self.prefix_dict_name.append("pre{0}".format(k))
+
+        self.max_len = prompt_prefix.shape[-1]
+
+        """ 2. token embedding """
+        with torch.no_grad():
+            # length = 77, [sos] [sentences] [eos] [pad]...[pad]
+            prefix_embedding = clip_model.token_embedding(prompt_prefix) # (9, 77, 512) # embedder (49040, 512)
+            suffix_embedding = clip_model.token_embedding(prompt_suffix).squeeze(0) # (77, 512)
+            class_embedding = clip_model.token_embedding(class_tokens)              # (self.len_classes, 77, 512)
+
+            self.sos_token = nn.Parameter(prefix_embedding[0][0]).to(device)
+            self.padding = nn.Parameter(prefix_embedding[0][-1]).to(device)
+
+            class_embeddings = []
+            for i, l in enumerate(self.len_classes):
+                class_embeddings.append(class_embedding[i, 1:l+1] .to(device))
+
+            prefix_token_all = []
+            eos_token_all = []
+            for j, n in enumerate(self.n_prompt_prefix):
+                eos_token_all.append(nn.Parameter(prefix_embedding[j][self.n_prompt_prefix[j] + 1]).to(device))
+                prefix_token_all.append(nn.Parameter(prefix_embedding[j,1:n+1].to(device))) # (len(prefix), 512)
+
+        """ 4. detach tokens not to update """
+        if args.step2:
+            pre_emb_dict = {}
+            for k in range(len(prefix_token_all)):
+                pre_emb_dict[self.prefix_dict_name[k]] =prefix_token_all[k].requires_grad_(True)
+            self.prefix_tokens = nn.ParameterDict(pre_emb_dict)
+        else:
+            with torch.no_grad():
+                pre_emb_dict = {}
+                for k in range(len(prefix_token_all)):
+                    pre_emb_dict[self.prefix_dict_name[k]] = prefix_token_all[k].requires_grad_(False)
+                self.prefix_tokens = nn.ParameterDict(pre_emb_dict)
+
+        with torch.no_grad():
+            """ don't update class token and suffix_token, only update prefix. """
+            self.suffix_tokens = suffix_embedding[1:1 + self.n_prompt_suffix].to(device)
+
+            cls_emb_dict = {}
+            for k in range(len(class_embeddings)):
+                cls_emb_dict[self.dict_name[k]] =class_embeddings[k]
+            self.class_embeddings = cls_emb_dict
+
+            eos_emb_dict = {}
+            for k in range(len(eos_token_all)):
+                eos_emb_dict[self.prefix_dict_name[k]] =eos_token_all[k]
+            self.eos_token = eos_emb_dict
+
+
+    def count_token(self, x):
+        return (x != 0).sum(1) - 2
+    
+    def get_embedding(self, device="cuda"):
+        embeddings = []
+
+        with torch.no_grad():
+            self.sos_token = self.sos_token.to(device)
+            self.padding =  self.padding.to(device)
+            self.suffix_tokens =  self.suffix_tokens.to(device)
+
+            for i, cls in enumerate(self.class_embeddings):
+                self.class_embeddings[cls] = self.class_embeddings[cls].to(device)
+            for i, pre in enumerate(self.prefix_tokens):
+                self.prefix_tokens[pre] = self.prefix_tokens[pre].to(device)
+            for i, eos in enumerate(self.eos_token):
+                self.eos_token[eos] = self.eos_token[eos].to(device)
+
+        for j, pre in enumerate(self.prefix_tokens):
+            cls_embedding = []
+            for i, cls in enumerate(self.class_embeddings):
+            #for i, cls in enumerate(self.class_tokens):
+                embed = torch.cat((
+                    self.sos_token[None], # self.dum_tokens["sos_token"][None],
+                    self.prefix_tokens[pre],#self.prefix_tokens,
+                    self.class_embeddings[cls],#cls[self.dict_name[i]],
+                    self.suffix_tokens,
+                    self.eos_token[pre][None], # self.dum_tokens["eos_token"][None],
+                ))
+                padding = self.padding[None].repeat(self.max_len - embed.size(0), 1)
+                cls_embedding.append(torch.cat((embed, padding), 0))
+
+            cls_embedding = torch.stack(cls_embedding) # (self.len_classes, 77, 512)
+            embeddings.append(cls_embedding)
+
+        embeddings = torch.stack(embeddings)
+        return embeddings
+
+    def get_base_embedding(self, device="cuda"):
+        with torch.no_grad():
+            self.sos_token = self.sos_token.to(device)
+            self.suffix_tokens = self.suffix_tokens.to(device)
+            self.padding =  self.padding.to(device)
+
+            for i, pre in enumerate(self.prefix_tokens):
+                self.prefix_tokens[pre] = self.prefix_tokens[pre].to(device)
+            for i, eos in enumerate(self.eos_token):
+                self.eos_token[eos] = self.eos_token[eos].to(device)
+
+        embeddings = []
+        for i, pre in enumerate(self.prefix_tokens):
+            embed = torch.cat((
+                self.sos_token[None], # self.dum_tokens["sos_token"][None],
+                self.prefix_tokens[pre],#self.prefix_tokens,
+                self.suffix_tokens,
+                self.eos_token[pre][None], # self.dum_tokens["eos_token"][None],
+            ))
+            padding = self.padding[None].repeat(self.max_len - embed.size(0), 1)
+            embeddings.append(torch.cat((embed, padding), 0))
+        
+        embeddings = torch.stack(embeddings) # (self.len_classes, 77, 512)
+        return embeddings
+
+    def init_mean_embed(self, clip_model, device="cuda"):
+        cls_mean = []
+        emb = self.get_embedding(device) # = clip_model.token_embedding(text)
+        for i in range(len(self.n_prompt_prefix)):
+            x = emb[i]
+            x = x + clip_model.positional_embedding.to(clip_model.dtype)
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = clip_model.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
+            x = clip_model.ln_final(x).type(clip_model.dtype)
+            cls_mean.append(x[range(len(self.len_classes)), self.len_classes + self.n_prompt_prefix[i] + self.n_prompt_suffix + 1])
+            
+        cls_mean = torch.stack(cls_mean)
+        return torch.mean(cls_mean @ clip_model.text_projection, dim=0, keepdim=True)
+
+
+    def init_base_mean_embed(self, clip_model, device="cuda"):
+        x = self.get_base_embedding() # = clip_model.token_embedding(text)
+        x = x + clip_model.positional_embedding.to(clip_model.dtype)
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = clip_model.transformer(x)
+        x = x.permute(1, 0, 2)  # LND -> NLD
+        x = clip_model.ln_final(x).type(clip_model.dtype)
+        x_cls = x[ torch.arange(9), 1 + self.n_prompt_prefix + self.n_prompt_suffix]
+        return torch.mean(x_cls @ clip_model.text_projection, dim=0, keepdim=True)
+        
+    def forward_prefix(self, clip_model, device="cuda"):
+        return self.init_base_mean_embed(clip_model, device=device)
+
+    def forward(self, clip_model, device="cuda"):
+        return self.init_mean_embed(clip_model, device=device)
 
 
 class ResBlk(nn.Module):
@@ -324,11 +528,10 @@ class MappingNetwork(nn.Module):
         for layer in self.unshared:
             out += [layer(h)] #(8,64)
         out = torch.stack(out, dim=1)  # (batch, num_domains, style_dim) #(8,10,64)
-
         if self.args.multi_hot: #y = idx
             if self.args.use_base and self.args.zero_cut:
                 sty = out * y.unsqueeze(-1) 
-                sty = torch.mean(sty, dim=1)
+                sty = torch.sum(sty, dim=1)/torch.sum(y, dim=-1, keepdim=True) #sty = torch.mean(sty, dim=1)
             else:
                 idx = torch.LongTensor( [ [i] for i in range(y.size(0)) ] )
                 sty = out[idx, y]
@@ -371,7 +574,7 @@ class StyleEncoder(nn.Module):
         if self.args.multi_hot:
             if self.args.use_base and self.args.zero_cut: 
                 sty = out * y.unsqueeze(-1)
-                sty = torch.mean(sty, dim=1)
+                sty = torch.sum(sty, dim=1)/torch.sum(y, dim=-1, keepdim=True) #sty = torch.mean(sty, dim=1)
             else:
                 idx = torch.LongTensor( [ [i] for i in range(y.size(0)) ] )
                 sty = out[idx, y]
@@ -400,9 +603,11 @@ class Discriminator(nn.Module):
         self.main = nn.Sequential(*blocks)
 
     def forward(self, x, y):
-        #import pdb;pdb.set_trace()
         out = self.main(x) #(8,10,4,4)
         out = out.view(out.size(0), -1)  # (batch, num_domains) #(8,160)
+        
+        
+        output = [] 
 
         if self.args.multi_hot:
             if self.args.use_base and self.args.zero_cut:
@@ -418,6 +623,7 @@ class Discriminator(nn.Module):
                 idx = torch.LongTensor( [ [i] for i in range(y.size(0)) ] )
                 out = out[idx, y] # (batch, num_topk)
                 return out
+               
         elif self.args.thresholding:
             output = [] #[[] for i in range(y.size(0))]
             for i in range(y.size(0)):
@@ -427,8 +633,7 @@ class Discriminator(nn.Module):
                     else:
                         continue
             return torch.cat(output, dim=0)
-            # network의 출력값이 딱 0이 나오는 값은 없을거라 가정하고, 해당 코드 작성.
-            # return out[ torch.where(out*y>0) ] 
+
 
 class Normalize(nn.Module):
     def __init__(self, power=2):
@@ -452,7 +657,6 @@ def init_weights(net, init_type='normal', init_gain=0.02, debug=False):
     work better for some applications. Feel free to try yourself.
     """
     def init_func(m):  # define the initialization function
-        #import pdb;pdb.set_trace()
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
             if debug:
@@ -493,33 +697,37 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[], debug=False, i
 def build_model(args):
     """ get attr and prompt to use. """
     template, prompt, prompt_idx, base_template = get_prompt_and_att(args)
-    #att_to_use, init_prompt, prompt, prompt_idx = get_prompt_and_att(args)
-    args.num_domains = len(prompt) #+ len(prompt_out)
+    args.num_domains = len(prompt)
 
     """ model definition & initialization """
     generator = nn.DataParallel(Generator(args, args.img_size, args.style_dim, w_hpf=args.w_hpf))
     mapping_network = nn.DataParallel(MappingNetwork(args, args.latent_dim, args.style_dim, args.num_domains))
     style_encoder = nn.DataParallel(StyleEncoder(args, args.img_size, args.style_dim, args.num_domains))
     discriminator = nn.DataParallel(Discriminator(args, args.img_size, args.num_domains))
-    if args.use_prompt:
-        # """ 사용할 clip model load. """
-        clip_model, preprocess = clip.load('ViT-B/32', device="cuda", jit=False) 
+    if args.text_aug or args.step2:
+        clip_model, preprocess = clip.load('ViT-B/32', device="cpu", jit=False) 
         """ freeze the network parameters """
         for clip_param in clip_model.parameters():
             clip_param.requires_grad = False
-        promptLearner = nn.DataParallel(PromptLearner(args, device="cuda", K=len(prompt), init_prompt=template, classes=prompt, clip_model=clip_model))
+
+        if not args.text_aug:
+            promptLearner = nn.DataParallel(PromptLearner(args, device="cuda", K=len(prompt), init_prompt=template, classes=prompt, clip_model=clip_model))
+        else:
+            imagenet_templates, base_imagenet_templates = get_templates(args.dataset)
+            promptLearner = nn.DataParallel(PromptMean(args, device="cuda", K=len(prompt), templates=imagenet_templates, classes=prompt, clip_model=clip_model.to('cuda')))
         del clip_model
+
 
     """ make ema models """
     mapping_network_ema = copy.deepcopy(mapping_network)
     generator_ema = copy.deepcopy(generator)
     style_encoder_ema = copy.deepcopy(style_encoder)
-    if args.use_prompt:
+    if args.step2 or args.text_aug:
         promptLearner_ema = copy.deepcopy(promptLearner)
     
 
     """ make munch """
-    if args.use_prompt:
+    if args.text_aug or args.step2:
         nets = Munch(generator=generator,
                     mapping_network=mapping_network,
                     style_encoder=style_encoder,
@@ -527,9 +735,9 @@ def build_model(args):
                     discriminator=discriminator)
         nets_ema = Munch(generator=generator_ema,
                         mapping_network=mapping_network_ema,
-                        style_encoder=style_encoder_ema,
                         promptLearner = promptLearner_ema,
-                        )
+                        style_encoder=style_encoder_ema,
+                        )        
     else:
         nets = Munch(generator=generator,
                     mapping_network=mapping_network,

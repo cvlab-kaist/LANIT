@@ -11,17 +11,6 @@ import torchvision
 from torchvision import transforms
 import torch.nn.functional as F
 
-
-# def clip_normalize(image,device):
-#     image = F.interpolate(image,size=224,mode='bicubic')
-#     mean=torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(device)
-#     std=torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(device)
-#     mean = mean.view(1,-1,1,1)
-#     std = std.view(1,-1,1,1)
-
-#     image = (image-mean)/std
-#     return image
-
 def str2bool(v):
     if isinstance(v, bool):
         return v
