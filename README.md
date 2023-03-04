@@ -20,7 +20,7 @@ For unpaired image-to-image translation, (a) conventional methods (CycleGAN, MUN
 
 Our model LANIT is illustrated below:
 
-![alt text](./images/network_config_lanit.png)
+![alt text](./images/network_confing_lanit2.png)
 
 # Environment Settings
 ```
