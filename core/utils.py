@@ -36,6 +36,18 @@ def get_prompt_and_att(args):
         elif args.num_domains == 10:
             prompt = ['red car', 'orange car', 'gray car', 'blue car', 'truck', 'white car', 'sports car', 'van', 'sedan','compact car']
 
+    if 'anime' in args.dataset:
+        init_prompt = 'A photo of anime with {}.'
+        base_template = ["A photo of anime with."]
+        all_prompt = ['brown hair', 'red hair', 'black hair', 'purple hair', 'blond hair','blue hair', 'pink hair', 'silver hair', 'green hair', 'white hair']
+        
+        if args.num_domains == 4:
+            prompt = ['brown hair', 'red hair', 'black hair', 'purple hair',]
+        elif args.num_domains == 7:
+            prompt = ['brown hair', 'red hair', 'black hair', 'purple hair', 'blond hair','blue hair', 'pink hair',]
+        elif args.num_domains == 10:
+            prompt = ['brown hair', 'red hair', 'black hair', 'purple hair', 'blond hair','blue hair', 'pink hair', 'silver hair', 'green hair', 'white hair']
+            
     if 'metface' in args.dataset:
         init_prompt = 'a portrait with {}.'
         base_template = ["a portrait with."]
@@ -232,10 +244,23 @@ def translate_using_latent(nets, args, x_src, x_ref, y_ref, filename):
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
     x_concat = [x_src_with_wb]
     
+    #resample_x_fakes = []
     for i, s_ref in enumerate(s_ref_list):
         x_fake = nets.generator(x_src, s_ref)
+        #x_fake = nets.generator(x_fake, s_ref)
+        #resample_x_fakes.append(x_fake)
+        
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
         x_concat += [x_fake_with_ref]
+    
+    # x_src = torch.stack(resample_x_fakes)
+    # x_concat = [x_src_with_wb]
+    # for i, s_ref in enumerate(s_ref_list):
+    #     x_fake = nets.generator(x_src, s_ref)
+    #     resample_x_fakes.append(x_fake)
+        
+    #     x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
+    #     x_concat += [x_fake_with_ref]
 
     x_concat = torch.cat(x_concat, dim=0)
     save_image(x_concat, N+1, filename)
