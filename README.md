@@ -157,6 +157,8 @@ Results are saved in the path: ./expr/results/args.name/latent(or reference).jpg
 
 The example shell script is located in "./shell"
 
+Please download the checkpoints for direct inference: [Celeba-10, Anime-10, Metface-10, LHQ-10](https://drive.google.com/file/d/1SvaMUbYYSyGnLpkWJlsd6mtM_EAxbsZF/view?usp=sharing)
+
 * Reference-guided inference code (CelebA-HQ):
 ```
 python main.py \
