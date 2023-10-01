@@ -1,0 +1,26 @@
+python main.py \
+    --sample_different 1 \
+    --sample_different 1 \
+    --name "" \
+    --dataset metface \
+    --mode sample \
+    --train_img_dir ./imgs/metface \
+    --val_img_dir ./imgs/metface \
+    --src_dir ./imgs/metface \
+    --ref_dir ./imgs/metface \
+    --checkpoint_dir ./lanit_metfaces_weight/metface-10 \
+    --step1 \
+    --num_domains 10 \
+    --cycle \
+    --ds \
+    --multi_hot \
+    --use_base \
+    --zero_cut \
+    --w_hpf 0 \
+    --text_aug \
+    --dcycle \
+    --base_fix \
+    --val_batch_size 8 \
+    --resume_iter 20000 \
+    --infer_mode latent \
+    --latent_num 1 \

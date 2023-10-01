@@ -1,0 +1,24 @@
+python main.py \
+    --sample_different 1 \
+    --name "" \
+    --dataset anime \
+    --mode sample \
+    --train_img_dir ./imgs/anime \
+    --val_img_dir ./imgs/anime \
+    --src_dir ./imgs/anime \
+    --ref_dir ./imgs/anime \
+    --checkpoint_dir ./lanit_animefaces_weight/anime-10 \
+    --step1 \
+    --num_domains 10 \
+    --cycle \
+    --ds \
+    --multi_hot \
+    --use_base \
+    --zero_cut \
+    --w_hpf 0 \
+    --text_aug \
+    --dcycle \
+    --base_fix \
+    --val_batch_size 8 \
+    --resume_iter 24000 \
+    --infer_mode reference \
