@@ -11,6 +11,12 @@ def get_templates(dataset):
     elif "landscape" in dataset:
         imagenet_templates = lhq_imagenet_templates
         base_imagenet_templates = lhq_base_imagenet_templates
+    elif "anime" in dataset:
+        imagenet_templates = anime_imagenet_templates
+        base_imagenet_templates = anime_base_imagenet_templates
+    elif "metface" in dataset:
+        imagenet_templates = metface_imagenet_templates
+        base_imagenet_templates = metface_base_imagenet_templates
     else:
         print("@@@@@@@@@@@@@@@@ template should be registered in ./template.py for current dataset @@@@@@@@@@@@@@@@@@")
         exit(0)
@@ -112,4 +118,52 @@ lhq_base_imagenet_templates = [
     ["the scene image of."],
     ["high quality scene image of."],
     ["a high quality scene image of."],
+]
+
+anime_imagenet_templates = [
+    'A photo of anime with {}.',
+    'A anime photo of the {}.',
+    'The anime photo of the {}.',
+    'A good anime photo of the {}.',
+    "high quality anime photo of {}.",
+    "a anime image of {}.",
+    "the anime image of {}.",
+    "high quality anime image of {}.",
+    "a high quality anime image of {}.",
+]
+
+anime_base_imagenet_templates = [
+    ['a anime photo with.'],
+    ['a anime photo of the.'],
+    ['the anime photo of the.'],
+    ['a good anime photo of the.'],
+    ["high quality anime photo of."],
+    ["a anime image of."],
+    ["the anime image of."],
+    ["high quality anime image of."],
+    ["a high quality anime image of."],
+]
+
+metface_imagenet_templates = [
+    'A portrait with {}.',
+    'A portrait of the {}.',
+    'The portrait of the {}.',
+    'A good portrait of the {}.',
+    "high quality portrait of {}.",
+    "a portrait image of {}.",
+    "the portrait image of {}.",
+    "high quality portrait image of {}.",
+    "a high quality portrait image of {}.",
+]
+
+metface_base_imagenet_templates = [
+    ['a portrait with.'],
+    ['a portrait of the.'],
+    ['the portrait of the.'],
+    ['a good portrait of the.'],
+    ["high quality portrait of."],
+    ["a portrait image of."],
+    ["the portrait image of."],
+    ["high quality portrait image of."],
+    ["a high quality portrait image of."],
 ]
